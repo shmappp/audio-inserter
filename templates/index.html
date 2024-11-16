@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Audio to Video File</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 30px;
+      background-color: #f9f9f9;
+    }
+    .container {
+      text-align: center;
+      padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      width: 300px;
+    }
+    .upload-section {
+      text-align: center;
+      margin-bottom: 50px;
+    }
+    .file-info {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #555;
+    }
+    .checkbox-section {
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+    .volumeSection {
+        margin-bottom: 30px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      color: #fff;
+      background-color: #007bff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Add Audio to Video File</h1>
+
+    <!-- Video Upload Section -->
+    <div class="upload-section">
+      <label for="videoUpload">Upload Video:</label>
+      <input type="file" id="videoUpload" accept="video/*">
+      <div id="videoInfo" class="file-info"></div>
+    </div>
+
+    <!-- Audio Upload Section -->
+    <div class="upload-section">
+      <label for="audioUpload">Upload Audio:</label>
+      <input type="file" id="audioUpload" accept="audio/*">
+      <div id="audioInfo" class="file-info"></div>
+    </div>
+
+    <!-- Checkbox Section -->
+    <div class="checkbox-section">
+        <input type="checkbox" id="overlayAudio" name="overlayAudio">
+        <label for="overlayAudio">Overlay audio?</label>
+    </div>
+    <!-- Volume Input Section (initially hidden) -->
+    <div class="volume-section" id="volumeSection" style="display: none;">
+        <label for="overlayVolume">Overlay Volume (%):</label>
+        <input type="number" id="overlayVolume" name="overlayVolume" min="0" max="100" placeholder="0-100">
+    </div>
+
+    <!-- Submit Button -->
+    <button id="submitButton">Upload</button>
+  </div>
+
+  <script>
+    // Utility function to format file size
+    function formatSize(bytes) {
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      let unitIndex = 0;
+      while (bytes >= 1024 && unitIndex < units.length - 1) {
+        bytes /= 1024;
+        unitIndex++;
+      }
+      return `${bytes.toFixed(2)} ${units[unitIndex]}`;
+    }
+
+    // Function to handle file uploads
+    function handleFileUpload(input, infoElementId) {
+      const file = input.files[0];
+      if (!file) return;
+
+      // Display file size
+      const fileSize = formatSize(file.size);
+
+      // Create media element to calculate duration
+      const mediaElement = document.createElement(input.accept.includes('video') ? 'video' : 'audio');
+      mediaElement.src = URL.createObjectURL(file);
+
+      mediaElement.addEventListener('loadedmetadata', () => {
+        const duration = mediaElement.duration;
+        document.getElementById(infoElementId).innerText =
+          `Size: ${fileSize}, Runtime: ${duration.toFixed(2)} seconds`;
+      });
+    }
+
+    // Event listeners for file inputs
+    document.getElementById('videoUpload').addEventListener('change', (event) => {
+      handleFileUpload(event.target, 'videoInfo');
+    });
+
+    document.getElementById('audioUpload').addEventListener('change', (event) => {
+      handleFileUpload(event.target, 'audioInfo');
+    });
+
+      // Toggle volume input visibility based on checkbox state
+  document.getElementById('overlayAudio').addEventListener('change', function () {
+    const volumeSection = document.getElementById('volumeSection');
+    if (this.checked) {
+      volumeSection.style.display = 'block';
+    } else {
+      volumeSection.style.display = 'none';
+    }
+  });
+
+    // Handle POST request
+    document.getElementById('submitButton').addEventListener('click', () => {
+      const videoFile = document.getElementById('videoUpload').files[0];
+      const audioFile = document.getElementById('audioUpload').files[0];
+      const overlayAudio = document.getElementById('overlayAudio').checked;
+      const overlayVolume = overlayAudio ? document.getElementById('overlayVolume').value : null;
+
+      if (!videoFile || !audioFile) {
+        alert('Please upload both video and audio files before submitting.');
+        return;
+      }
+    
+      if (overlayAudio && (overlayVolume === null || overlayVolume === '' || overlayVolume < 0 || overlayVolume > 100)) {
+        alert('Please enter a valid volume between 0 and 100.');
+      return;
+    }
+      const formData = new FormData();
+      formData.append('video', videoFile);
+      formData.append('audio', audioFile);
+      formData.append('overlayAudio', overlayAudio); // Add the checkbox value to the form data
+      if (overlayAudio) {
+        formData.append('overlayVolume', overlayVolume);
+      }
+
+      for (let entry of formData.entries()) {
+        console.log(entry[0], entry[1]);
+        }
+    
+      fetch('/upload', {
+        method: 'POST',
+        body: formData,
+      })
+        .then(response => response.blob())
+        .then(blob => {
+            // Create a link element to trigger download
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            link.download = '_audiocombined.mp4'; // Default file name
+            link.click();
+            window.URL.revokeObjectURL(downloadUrl); // Clean up URL object
+        })
+        .catch(error => {
+        alert('Failed to upload files.');
+        console.error(error);
+        })
+    });
+  </script>
+</body>
+</html>
